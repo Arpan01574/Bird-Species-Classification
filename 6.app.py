@@ -59,7 +59,7 @@ def load_resnet_model(path="models/model_state_dict_best.pth", device="cpu"):
             name = k[len("module."):]
         new_sd[name] = v
 
-    # 4) Load into the model
+    # 4) LOAD INTO THE MODEL
     model.load_state_dict(new_sd)
 
     # 5) Wrap for multi‑GPU (if you’ll run on GPU) and move to device
@@ -73,7 +73,7 @@ def load_resnet_model(path="models/model_state_dict_best.pth", device="cpu"):
 def load_swin_pipeline():
     return pipeline("image-classification", model="Emiel/cub-200-bird-classifier-swin")
 
-# ─── 2) TRANSFORM FOR RESNET ─────────────────────────────────────────────────
+# ─── 2) TRANSFORM FOR RESNET ─────────────────────────────────────────────────____________________________
 
 resnet_transform = transforms.Compose([
     transforms.Resize((256,256)),
