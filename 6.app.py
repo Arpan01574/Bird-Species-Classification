@@ -7,7 +7,7 @@ from ultralytics import YOLO
 from transformers import pipeline
 import tempfile
 
-# ─── 0) Hard‑coded class names (from your ImageFolder output) ────────────────
+# ─── 0)class names────────────────
 class_names = [
     "Barn Swallow", "Bay breasted Warbler", "Black and white Warbler", "Black billed Cuckoo",
     "Black throated Blue Warbler", "Black throated Sparrow", "Blue Grosbeak", "Blue Jay",
@@ -92,7 +92,7 @@ if not uploaded:
     st.stop()
 
 img = Image.open(uploaded).convert("RGB")
-st.image(img, caption="Uploaded Image", use_column_width=True)
+st.image(img, caption="Uploaded Image", use_container_width=True)
 
 # Load models
 yolo_model       = load_yolo_model("models/epoch45.pt")
@@ -134,4 +134,4 @@ for box in boxes:
               f"{label} ({method}, {score:.2f})",
               fill="red")
 
-st.image(annotated, caption="Detections & Predictions", use_column_width=True)
+st.image(annotated, caption="Detections & Predictions", use_container_width=True)
