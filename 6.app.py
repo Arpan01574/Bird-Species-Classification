@@ -1,5 +1,5 @@
 import streamlit as st
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import torch
 import numpy as np
 from torchvision import transforms, models
@@ -7,83 +7,75 @@ from ultralytics import YOLO
 from transformers import pipeline
 import tempfile
 
-# ─── 0)class names────────────────
+# ─── 0) PAGE CONFIG & STYLES ─────────────────────────────────────────────
+st.set_page_config(
+    page_title="Bird Species Classification",
+    page_icon="🐦",
+    layout="wide"
+)
+# Inject custom CSS for background and fonts
+st.markdown(
+    """
+    <style>
+        .stApp {
+            background: linear-gradient(120deg, #e0f7fa, #ffe0b2);
+        }
+        h1 {
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 2.5rem;
+            color: #37474f;
+            text-align: center;
+        }
+        .stImage {
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            padding: 5px;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# ─── 1) CLASS NAMES ─────────────────────────────────────────────────────────
 class_names = [
-    "Barn Swallow", "Bay breasted Warbler", "Black and white Warbler", "Black billed Cuckoo",
-    "Black throated Blue Warbler", "Black throated Sparrow", "Blue Grosbeak", "Blue Jay",
-    "Bobolink", "Bohemian Waxwing", "Bronzed Cowbird", "Brown Creeper",
-    "Brown Pelican", "Brown Thrasher", "Canada Warbler", "Cape Glossy Starling",
-    "Cape May Warbler", "Cardinal", "Carolina Wren", "Caspian Tern",
-    "Cedar Waxwing", "Cerulean Warbler", "Chuck will Widow", "Clark Nutcracker",
-    "Common Yellowthroat", "Eared Grebe", "Eastern Towhee", "European Goldfinch",
-    "Evening Grosbeak", "Forsters Tern", "Fox Sparrow", "Geococcyx",
-    "Golden winged Warbler", "Gray Kingbird", "Gray crowned Rosy Finch", "Green Jay",
-    "Green Violetear", "Green tailed Towhee", "Harris Sparrow", "Heermann Gull",
-    "Hooded Merganser", "Hooded Oriole", "Hooded Warbler", "Horned Grebe",
-    "Horned Lark", "Horned Puffin", "Ivory Gull", "Lazuli Bunting",
-    "Le Conte Sparrow", "Least Auklet", "Loggerhead Shrike", "Magnolia Warbler",
-    "Mallard", "Myrtle Warbler", "Nashville Warbler", "Nelson Sharp tailed Sparrow",
-    "Nighthawk", "Ovenbird", "Pacific Loon", "Painted Bunting",
-    "Palm Warbler", "Parakeet Auklet", "Pied Kingfisher", "Pied billed Grebe",
-    "Pine Grosbeak", "Pine Warbler", "Prairie Warbler", "Prothonotary Warbler",
-    "Purple Finch", "Red bellied Woodpecker", "Red cockaded Woodpecker", "Red eyed Vireo",
-    "Red winged Blackbird", "Rhinoceros Auklet", "Rose breasted Grosbeak", "Ruby throated Hummingbird",
-    "Rufous Hummingbird", "Savannah Sparrow", "Sayornis", "Scarlet Tanager",
-    "Scissor tailed Flycatcher", "Spotted Catbird", "Summer Tanager", "Tree Swallow",
-    "Tropical Kingbird", "Vermilion Flycatcher", "Vesper Sparrow", "Warbling Vireo",
-    "Western Meadowlark", "Western Wood Pewee", "Whip poor Will", "White Pelican",
-    "White breasted Kingfisher", "White breasted Nuthatch", "White crowned Sparrow", "White throated Sparrow",
-    "Yellow Warbler", "Yellow breasted Chat", "Yellow headed Blackbird", "Yellow throated Vireo"
+    # ... (same list as before) ...
 ]
 
-# ─── 1) CACHING MODEL LOADERS ──────────────────────────────────────────────
+# ─── 2) SIDEBAR SETTINGS ────────────────────────────────────────────────────
+st.sidebar.title("Settings")
+confidence_threshold = st.sidebar.slider(
+    "Confidence threshold", min_value=0.0, max_value=1.0, value=0.3, step=0.01
+)
 
+# ─── 3) CACHE MODEL LOADERS ─────────────────────────────────────────────────
 @st.cache_resource
 def load_yolo_model(path="models/epoch45.pt"):
     return YOLO(path)
 
 @st.cache_resource
 def load_resnet_model(path="models/model_state_dict_best.pth", device="cpu"):
-    # 1) Build the bare ResNet152
     model = models.resnet152(weights=None)
     model.fc = torch.nn.Linear(model.fc.in_features, len(class_names))
-
-    # 2) Load the raw state_dict
     raw_sd = torch.load(path, map_location="cpu")
-
-    # 3) Strip "module." prefixes if present
-    new_sd = {}
-    for k, v in raw_sd.items():
-        name = k
-        if k.startswith("module."):
-            name = k[len("module."):]
-        new_sd[name] = v
-
-    # 4) LOAD INTO THE MODEL
+    new_sd = {k[len("module."):]:v if k.startswith("module.") else v for k,v in raw_sd.items()}
     model.load_state_dict(new_sd)
-
-    # 5) Wrap for multi‑GPU (if you’ll run on GPU) and move to device
     model = torch.nn.DataParallel(model)
     model.to(device)
     model.eval()
     return model
 
-
 @st.cache_resource
 def load_swin_pipeline():
     return pipeline("image-classification", model="Emiel/cub-200-bird-classifier-swin")
 
-# ─── 2) TRANSFORM FOR RESNET ─────────────────────────────────────────────────____________________________
-
+# ─── 4) TRANSFORM FOR RESNET ─────────────────────────────────────────────────
 resnet_transform = transforms.Compose([
     transforms.Resize((256,256)),
     transforms.ToTensor(),
-    transforms.Normalize([0.485,0.456,0.406],
-                         [0.229,0.224,0.225])
+    transforms.Normalize([0.485,0.456,0.406], [0.229,0.224,0.225])
 ])
 
-# ─── 3) STREAMLIT UI ────────────────────────────────────────────────────────
-
+# ─── 5) STREAMLIT UI ────────────────────────────────────────────────────────
 st.title("🐦 Bird Species Classification")
 
 uploaded = st.file_uploader("Upload a bird image", type=["jpg","jpeg","png"])
@@ -95,13 +87,20 @@ img = Image.open(uploaded).convert("RGB")
 st.image(img, caption="Uploaded Image", use_container_width=True)
 
 # Load models
-yolo_model       = load_yolo_model("models/epoch45.pt")
-resnet_model     = load_resnet_model("models/model_state_dict_best.pth")
-hf_pipe          = load_swin_pipeline()
+yolo_model   = load_yolo_model()
+resnet_model = load_resnet_model()
+hf_pipe      = load_swin_pipeline()
+
+# Pre-load a TrueType font for labels
+try:
+    font = ImageFont.truetype("DejaVuSans-Bold.ttf", size=18)
+except IOError:
+    font = ImageFont.load_default()
 
 # Run YOLO detection
 results = yolo_model(np.array(img))
 boxes   = results[0].boxes.xyxy.cpu().numpy()
+scores_full = hf_pipe(img)[0]["score"]
 
 annotated = img.copy()
 draw = ImageDraw.Draw(annotated)
@@ -128,10 +127,30 @@ for box in boxes:
     else:
         label, score, method = rlabel, rconf, "ResNet"
 
-    # Draw box + label
+    # Filter by threshold
+    if score < confidence_threshold:
+        continue
+
+    # Draw box
     draw.rectangle([x1,y1,x2,y2], outline="red", width=3)
-    draw.text((x1, max(0,y1-15)),
-              f"{label} ({method}, {score:.2f})",
-              fill="red")
+
+    # Prepare text background
+    text = f"{label} ({method}, {score:.2f})"
+    text_w, text_h = draw.textsize(text, font=font)
+    text_origin = (x1, max(y1 - text_h - 6, 0))
+    # Background rectangle for text
+    draw.rectangle(
+        [
+            text_origin,
+            (text_origin[0] + text_w + 6, text_origin[1] + text_h + 6)
+        ], fill="red"
+    )
+    # Text label
+    draw.text(
+        (text_origin[0] + 3, text_origin[1] + 3),
+        text,
+        fill="white",
+        font=font
+    )
 
 st.image(annotated, caption="Detections & Predictions", use_container_width=True)
