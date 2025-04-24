@@ -8,7 +8,7 @@ from transformers import pipeline
 import tempfile
 
 
-# ─── 0)class names────────────────
+# ─── 0)class NAMES───_____─────────────
 class_names = [
     "Barn Swallow", "Bay breasted Warbler", "Black and white Warbler", "Black billed Cuckoo",
     "Black throated Blue Warbler", "Black throated Sparrow", "Blue Grosbeak", "Blue Jay",
