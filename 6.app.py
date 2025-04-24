@@ -132,7 +132,7 @@ for box in boxes:
     # Draw box + label
     draw.rectangle([x1,y1,x2,y2], outline="red", width=3)
     draw.text((x1, max(0,y1-15)),
-              f"{label} ({method}, {score:.2f})",
+              f"{label} ({score:.2f})",
               fill="red")
 
 st.image(annotated, caption="Detections & Predictions", use_container_width=True)
