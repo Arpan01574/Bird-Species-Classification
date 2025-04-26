@@ -1,11 +1,39 @@
+import sys
+import os
+
+# Auto-redirect to project .venv streamlit if executed via python app.py
+_project_dir = os.path.dirname(os.path.abspath(__file__))
+_venv_streamlit = os.path.join(_project_dir, ".venv", "Scripts", "streamlit.exe")
+if os.path.exists(_venv_streamlit):
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        _in_streamlit = get_script_run_ctx() is not None
+    except Exception:
+        _in_streamlit = False
+
+    if not _in_streamlit and "streamlit" not in os.path.basename(sys.argv[0]).lower():
+        import socket
+        import subprocess
+        import webbrowser
+
+        def _is_port_in_use(port):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.5)
+                return s.connect_ex(('127.0.0.1', port)) == 0
+
+        target_port = 8502
+        if _is_port_in_use(target_port):
+            print(f"\n[OK] Bird Species app is ALREADY running on http://localhost:{target_port}!")
+            print(f"[OK] Opening http://localhost:{target_port} in your browser...\n")
+            webbrowser.open(f"http://localhost:{target_port}")
+            sys.exit(0)
+
+        sys.exit(subprocess.call([_venv_streamlit, "run", os.path.abspath(__file__), "--server.port", str(target_port)] + sys.argv[1:]))
+
 import streamlit as st
 from PIL import Image, ImageDraw
-import torch
 import numpy as np
-from torchvision import transforms, models
-from ultralytics import YOLO
-from transformers import pipeline
-import tempfile
+import os
 
 
 # ─── 0)class NAMES───_____─────────────
@@ -37,14 +65,25 @@ class_names = [
     "Yellow Warbler", "Yellow breasted Chat", "Yellow headed Blackbird", "Yellow throated Vireo"
 ]
 
-# ─── 1) CACHING MODEL LOADERS ──────────────────────────────────────────────
+# ─── Check which models are available ────────────────────────────────────────
+YOLO_MODEL_PATH = "models/epoch45.pt"
+RESNET_MODEL_PATH = "models/model_state_dict_best.pth"
+
+HAS_YOLO = os.path.exists(YOLO_MODEL_PATH)
+HAS_RESNET = os.path.exists(RESNET_MODEL_PATH)
+
+# ─── 1) CACHING MODEL LOADERS (Lazy-imported for instant app startup) ─────────
 
 @st.cache_resource
 def load_yolo_model(path="models/epoch45.pt"):
+    from ultralytics import YOLO
     return YOLO(path)
 
 @st.cache_resource
 def load_resnet_model(path="models/model_state_dict_best.pth", device="cpu"):
+    import torch
+    from torchvision import models
+
     # 1) Build the bare ResNet152
     model = models.resnet152(weights=None)
     model.fc = torch.nn.Linear(model.fc.in_features, len(class_names))
@@ -63,7 +102,7 @@ def load_resnet_model(path="models/model_state_dict_best.pth", device="cpu"):
     # 4) LOAD INTO THE MODEL
     model.load_state_dict(new_sd)
 
-    # 5) Wrap for multi‑GPU (if you’ll run on GPU) and move to device
+    # 5) Wrap for multi‑GPU (if you'll run on GPU) and move to device
     model = torch.nn.DataParallel(model)
     model.to(device)
     model.eval()
@@ -72,22 +111,25 @@ def load_resnet_model(path="models/model_state_dict_best.pth", device="cpu"):
 
 @st.cache_resource
 def load_swin_pipeline():
-    return pipeline("image-classification", model="Emiel/cub-200-bird-classifier-swin")
+    from transformers import pipeline
+    return pipeline("image-classification", model="Emiel/cub-200-bird-classifier-swin", device=-1)
 
-# ─── 2) TRANSFORM FOR RESNET ─────────────────────────────────────────────────____________________________
+# ─── 2) TRANSFORM FOR RESNET ─────────────────────────────────────────────────
 
-resnet_transform = transforms.Compose([
-    transforms.Resize((256,256)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485,0.456,0.406],
-                         [0.229,0.224,0.225])
-])
+def get_resnet_transform():
+    from torchvision import transforms
+    return transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406],
+                             [0.229, 0.224, 0.225])
+    ])
 
 # ─── 3) STREAMLIT UI ────────────────────────────────────────────────────────
 
 st.title("🐦 Bird Species Classification")
 
-uploaded = st.file_uploader("Upload a bird image", type=["jpg","jpeg","png"])
+uploaded = st.file_uploader("Upload a bird image", type=["jpg", "jpeg", "png"])
 if not uploaded:
     st.info("Please upload an image.")
     st.stop()
@@ -112,11 +154,11 @@ hf_res_full = hf_pipe(img)
 hf_label, hf_conf = hf_res_full[0]["label"], hf_res_full[0]["score"]
 
 for box in boxes:
-    x1,y1,x2,y2 = map(int, box)
-    crop = img.crop((x1,y1,x2,y2))
+    x1, y1, x2, y2 = map(int, box)
+    crop = img.crop((x1, y1, x2, y2))
 
     # ResNet prediction on the crop
-    inp = resnet_transform(crop).unsqueeze(0)
+    inp = get_resnet_transform()(crop).unsqueeze(0)
     with torch.no_grad():
         out   = resnet_model(inp)
         probs = torch.softmax(out, dim=1)[0]
@@ -130,8 +172,8 @@ for box in boxes:
         label, score, method = rlabel, rconf, "ResNet"
 
     # Draw box + label
-    draw.rectangle([x1,y1,x2,y2], outline="red", width=3)
-    draw.text((x1, max(0,y1-15)),
+    draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
+    draw.text((x1, max(0, y1-15)),
               f"{label} ({score:.2f})",
               fill="red")
 
