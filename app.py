@@ -127,54 +127,79 @@ def get_resnet_transform():
 
 # ─── 3) STREAMLIT UI ────────────────────────────────────────────────────────
 
-st.title("🐦 Bird Species Classification")
+st.set_page_config(page_title="Bird Species Classification", page_icon="🐦", layout="wide")
 
-uploaded = st.file_uploader("Upload a bird image", type=["jpg", "jpeg", "png"])
+# Custom styling for high-end presentation
+st.markdown("""
+<style>
+    .main-title {
+        font-size: 2.3rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 2px;
+    }
+    .sub-title {
+        color: #94a3b8;
+        font-size: 1.0rem;
+        margin-bottom: 24px;
+    }
+    div[data-testid="stMetric"] {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 12px 16px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<p class="main-title">🐦 Bird Species Classification</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Hierarchical Swin Transformer Architecture · CUB-200-2011 Dataset</p>', unsafe_allow_html=True)
+
+with st.sidebar:
+    st.header("🧠 Model Architecture")
+    st.markdown("**Backbone:** Swin Transformer (`Swin-B`)")
+    st.markdown("**Task:** Fine-Grained 200 Bird Species Recognition")
+    st.markdown("**Benchmark Dataset:** Caltech-UCSD Birds-200-2011")
+    st.markdown("**Taxonomy:** 200 North American Species")
+    st.divider()
+    st.header("⚡ Pipeline Highlights")
+    st.markdown("• **Shifted Windows:** Self-attention within local windows with linear complexity")
+    st.markdown("• **Hierarchical Maps:** Multi-scale feature representations")
+    st.markdown("• **Inference Mode:** Softmax Top-5 Probability Distribution")
+
+uploaded = st.file_uploader("Upload a bird image (JPG, PNG, WebP):", type=["jpg", "jpeg", "png", "webp"])
 if not uploaded:
-    st.info("Please upload an image.")
+    st.info("👆 Please upload a bird image above to run classification.")
     st.stop()
 
 img = Image.open(uploaded).convert("RGB")
-st.image(img, caption="Uploaded Image", use_container_width=True)
 
-# Load models
-yolo_model       = load_yolo_model("models/epoch45.pt")
-resnet_model     = load_resnet_model("models/model_state_dict_best.pth")
-hf_pipe          = load_swin_pipeline()
+# Resize large images for fast CPU inference
+inf_img = img.copy()
+inf_img.thumbnail((512, 512), Image.Resampling.LANCZOS)
 
-# Run YOLO detection
-results = yolo_model(np.array(img))
-boxes   = results[0].boxes.xyxy.cpu().numpy()
+col_img, col_pred = st.columns([1, 1.2])
 
-annotated = img.copy()
-draw = ImageDraw.Draw(annotated)
+with col_img:
+    st.subheader("📸 Uploaded Image")
+    st.image(img, use_container_width=True)
 
-# Precompute HF result on the full image
-hf_res_full = hf_pipe(img)
-hf_label, hf_conf = hf_res_full[0]["label"], hf_res_full[0]["score"]
+with col_pred:
+    with st.spinner("Classifying bird species..."):
+        hf_pipe = load_swin_pipeline()
+        results = hf_pipe(inf_img, top_k=5)
 
-for box in boxes:
-    x1, y1, x2, y2 = map(int, box)
-    crop = img.crop((x1, y1, x2, y2))
+    top_label = results[0]["label"].replace("_", " ").title()
+    top_score = results[0]["score"]
 
-    # ResNet prediction on the crop
-    inp = get_resnet_transform()(crop).unsqueeze(0)
-    with torch.no_grad():
-        out   = resnet_model(inp)
-        probs = torch.softmax(out, dim=1)[0]
-        ridx  = torch.argmax(probs).item()
-        rlabel, rconf = class_names[ridx], probs[ridx].item()
+    st.subheader("🎯 Primary Prediction")
+    st.success(f"### {top_label}")
+    st.metric(label="Prediction Confidence", value=f"{top_score:.2%}")
 
-    # Choose best
-    if hf_conf > rconf:
-        label, score, method = hf_label, hf_conf, "HF"
-    else:
-        label, score, method = rlabel, rconf, "ResNet"
-
-    # Draw box + label
-    draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
-    draw.text((x1, max(0, y1-15)),
-              f"{label} ({score:.2f})",
-              fill="red")
-
-st.image(annotated, caption="Detections & Predictions", use_container_width=True)
+    st.subheader("📊 Top-5 Species Probabilities")
+    for r in results:
+        clean_name = r["label"].replace("_", " ").title()
+        score = r["score"]
+        st.progress(score, text=f"{clean_name}: {score:.2%}")
