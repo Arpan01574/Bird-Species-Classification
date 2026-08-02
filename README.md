@@ -18,7 +18,7 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/<your-username>/Bird-Species-Classification.git
+git clone https://github.com/Arpit-Shukla-20233080/Bird-Species-Classification.git
 cd Bird-Species-Classification
 
 pip install -r requirements.txt
