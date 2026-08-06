@@ -322,9 +322,3 @@ Note that the bundled Swin Transformer (`Emiel/cub-200-bird-classifier-swin`) is
 - **Ensemble classifier** — [`Emiel/cub-200-bird-classifier-swin`](https://huggingface.co/Emiel/cub-200-bird-classifier-swin), fine-tuned for the "Feather in Focus!" Kaggle competition (University of Amsterdam)
 - **EDA utilities** — notebook 1 adapts helper functions from [ecm200/caltech_birds](https://github.com/ecm200/caltech_birds)
 
-## Contact
-
-**[Your Name]**
-GitHub: [@your-username](https://github.com/your-username) · Email: your.email@example.com
-
-Project Link: [https://github.com/your-username/Bird-Species-Classification](https://github.com/your-username/Bird-Species-Classification)
