@@ -18,7 +18,7 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/Arpan01574/Bird-Species-Classification.git
+git clone https://github.com/Arpit-Shukla-20233080/Bird-Species-Classification.git
 cd Bird-Species-Classification
 
 pip install -r requirements.txt
@@ -46,7 +46,8 @@ streamlit run app.py
 - [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
-- [Contact](#contact)
+- [Support](#support)
+- [Team](#team)
 
 ## Overview
 
@@ -171,7 +172,7 @@ Bird-Species-Classification/
 ### Installation
 
 ```bash
-git clone https://github.com/<your-username>/Bird-Species-Classification.git
+git clone https://github.com/Arpit-Shukla-20233080/Bird-Species-Classification.git
 cd Bird-Species-Classification
 
 python -m venv venv
@@ -321,4 +322,17 @@ Note that the bundled Swin Transformer (`Emiel/cub-200-bird-classifier-swin`) is
 - **Object detection** — [Ultralytics YOLO11](https://github.com/ultralytics/ultralytics)
 - **Ensemble classifier** — [`Emiel/cub-200-bird-classifier-swin`](https://huggingface.co/Emiel/cub-200-bird-classifier-swin), fine-tuned for the "Feather in Focus!" Kaggle competition (University of Amsterdam)
 - **EDA utilities** — notebook 1 adapts helper functions from [ecm200/caltech_birds](https://github.com/ecm200/caltech_birds)
+
+## Support
+
+For questions, bug reports, or feature requests, please open an issue in this repository.
+
+## Team
+
+| Name | Role | GitHub |
+|---|---|---|
+| Arpit Shukla | Team Lead | [@Arpit-Shukla-20233080](https://github.com/Arpit-Shukla-20233080) |
+| Arpan Pethkar | Contributor | [@Arpan01574](https://github.com/Arpan01574) |
+| Amit Kumar Bhorayat | Contributor | [@amitkumar908](https://github.com/amitkumar908) |
+| Alok Shukla | Contributor | [@alok027-glitch](https://github.com/alok027-glitch) |
 
