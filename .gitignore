@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/
+
+# Models & Weights
+models/
+*.pt
+*.pth
+*.onnx
+
+# OS Junk & Local Scripts
+.DS_Store
+Thumbs.db
+*.log
+*.bat

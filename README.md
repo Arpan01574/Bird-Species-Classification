@@ -141,8 +141,7 @@ Bird-Species-Classification/
 ├── 3.data_preprocessing_for_classification.ipynb   # Crop, augment, build classifier dataset
 ├── 4.data_preprocess_for_100_classes.ipynb         # Filter down to the curated 100 classes
 ├── 5.ResNet_Classification_Model_Training.ipynb    # ResNet152 fine-tuning + evaluation
-├── 6.app.py                                        # Streamlit app (numbered copy)
-├── app.py                                          # Streamlit app (deployment entry point)
+├── app.py                                          # Streamlit web app (inference pipeline)
 ├── requirements.txt
 ├── classification_results/
 │   ├── classification_report_epoch8.txt
@@ -158,7 +157,7 @@ Bird-Species-Classification/
     └── model_state_dict_best.pth
 ```
 
-> `6.app.py` and `app.py` are identical. `app.py` sits at the repo root as the deployment entry point (many platforms default to looking for `app.py`), while `6.app.py` keeps a copy in sequence with the numbered notebooks that produced it.
+> The interactive application is located in `app.py` at the repo root for seamless local execution and one-click cloud deployment.
 
 ## Getting Started
 
@@ -196,11 +195,16 @@ If you don't have these files yet, retrain them using the notebooks below, or dr
 
 ### Running the App
 
+Click the ▶️ **Play** button on `app.py` in VS Code, or run via terminal:
 ```bash
 streamlit run app.py
 ```
 
-Open the local URL Streamlit prints (defaults to `http://localhost:8501`), upload a `.jpg` / `.jpeg` / `.png` photo, and the app will draw a bounding box with the predicted species and confidence score.
+Open the local URL Streamlit prints (defaults to `http://localhost:8502`), upload a `.jpg` / `.jpeg` / `.png` photo, and the app will display the prediction.
+
+> **Graceful Fallback Mode:** The app automatically adapts to available model files:
+> - **Full Detection + Ensemble**: Active when both `models/epoch45.pt` and `models/model_state_dict_best.pth` are present.
+> - **Classification Mode**: If local trained weights are not present in `models/`, the app automatically runs using the Hugging Face Swin Transformer (`Emiel/cub-200-bird-classifier-swin`), ensuring it runs without crashing.
 
 > **CPU vs. GPU:** `app.py` loads ResNet152 onto CPU by default (`load_resnet_model(..., device="cpu")`). If a CUDA GPU is available, change this argument to `"cuda"` for faster inference.
 
@@ -215,7 +219,7 @@ Run the notebooks in order to reproduce the full pipeline from raw data to train
 | 3 | `3.data_preprocessing_for_classification.ipynb` | Crops birds using ground-truth bounding boxes, applies per-class augmentation and edge-sharpening/background-blur variants, and assembles an 80/20 `ImageFolder`-style dataset. |
 | 4 | `4.data_preprocess_for_100_classes.ipynb` | Filters the full 200-class classification dataset down to the curated 100-species subset. |
 | 5 | `5.ResNet_Classification_Model_Training.ipynb` | Fine-tunes ResNet152 on the 100-class dataset, checkpoints on validation-accuracy improvements, and exports the best weights plus a full evaluation report. |
-| 6 | `6.app.py` / `app.py` | The Streamlit inference app described above. |
+| 6 | `app.py` | The Streamlit inference web app described above. |
 
 > **Note:** These notebooks were developed on Kaggle (and notebook 3 locally on Windows), so they contain hard-coded input paths (`/kaggle/input/...`, `C:\...`). Update the path variables near the top of each notebook to point at your own copy of the data before re-running.
 
