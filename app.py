@@ -1,9 +1,10 @@
 import sys
 import os
 
+_project_dir = os.path.dirname(os.path.abspath(__file__))
+
 # Auto-redirect to project .venv streamlit if executed via python app.py
 if __name__ == "__main__":
-    _project_dir = os.path.dirname(os.path.abspath(__file__))
     _venv_streamlit = os.path.join(_project_dir, ".venv", "Scripts", "streamlit.exe")
     if os.path.exists(_venv_streamlit):
         try:
@@ -29,7 +30,10 @@ if __name__ == "__main__":
                 webbrowser.open(f"http://localhost:{target_port}")
                 sys.exit(0)
 
-            sys.exit(subprocess.call([_venv_streamlit, "run", os.path.abspath(__file__), "--server.port", str(target_port)] + sys.argv[1:]))
+            sys.exit(subprocess.call(
+                [_venv_streamlit, "run", os.path.abspath(__file__), "--server.port", str(target_port)] + sys.argv[1:],
+                cwd=_project_dir
+            ))
 
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
@@ -66,8 +70,8 @@ class_names = [
 ]
 
 # ─── Model Paths & Availability ───────────────────────────────────────────────
-YOLO_MODEL_PATH = "models/epoch45.pt"
-RESNET_MODEL_PATH = "models/model_state_dict_best.pth"
+YOLO_MODEL_PATH = os.path.join(_project_dir, "models", "epoch45.pt")
+RESNET_MODEL_PATH = os.path.join(_project_dir, "models", "model_state_dict_best.pth")
 
 HAS_YOLO = os.path.exists(YOLO_MODEL_PATH)
 HAS_RESNET = os.path.exists(RESNET_MODEL_PATH)
@@ -187,7 +191,7 @@ with st.sidebar:
 
 # ─── 5) SAMPLE IMAGES & UPLOADER ─────────────────────────────────────────────
 
-test_images_dir = "test_images"
+test_images_dir = os.path.join(_project_dir, "test_images")
 sample_files = []
 if os.path.exists(test_images_dir):
     sample_files = [f for f in sorted(os.listdir(test_images_dir)) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
